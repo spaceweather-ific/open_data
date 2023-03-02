@@ -1,4 +1,4 @@
-This repository contains the results of the project related to the paper "Forecasting geomagnetic storm disturbances and their uncertainties using deep learning".
+This repository contains software and results of the project related to the paper "Forecasting geomagnetic storm disturbances and their uncertainties using deep learning".
 
 ##Contents
 * "ACE_data" folder contains the output of the preprocessing of the raw data obtained from OMNIWeb (https://omniweb.gsfc.nasa.gov).
