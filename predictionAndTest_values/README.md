@@ -1,0 +1,1 @@
+This folder contains all the predictions from the 200 bootstrap models and the 200 predictions from the dropout model. It also contains the test values for each SRT, differentiated because of the different value of lookback used.
