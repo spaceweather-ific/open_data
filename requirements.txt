@@ -1,0 +1,13 @@
+derivative
+keras==2.3.1
+tensorflow==2.5.0 
+h5py
+pandas
+seaborn
+pyarrow
+fastparquet
+attention
+optuna
+IPython
+sklearn
+wandb
