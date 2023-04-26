@@ -349,7 +349,7 @@ def main():
     """
         
     """Run Optuna"""
-
+    print("Lookforward: ", lf)
     if options.optuna:
         N_TRIALS = int(parameters['N_TRIALS']) # around 100 usually
         print( "N_TRIALS: ",  N_TRIALS)
@@ -382,11 +382,11 @@ def main():
             study.trials_dataframe().sort_values(by="value").to_csv('optuna_trials_global_'+options.dnn+'.csv')
             
             optuna.visualization.matplotlib.plot_contour(study)
-            plt.savefig(RMSE_prefix + aug_prefix + CV_prefix + derivative_prefix+'_'+ML_DATA+"{}hparams_contour_{}_{}.png".format(weigh_prefix,options.dnn,N_TRIALS))
+            plt.savefig(str(lf) + RMSE_prefix + CV_prefix + derivative_prefix+'_'+ML_DATA+"{}hparams_contour_{}_{}.png".format(weigh_prefix,options.dnn,N_TRIALS))
             
             optuna.importance.get_param_importances(study)
             optuna.visualization.matplotlib.plot_param_importances(study)
-            plt.savefig(RMSE_prefix + aug_prefix + CV_prefix + derivative_prefix+'_'+ML_DATA+"{}hparam_importances_{}_{}.png".format(weigh_prefix,options.dnn,N_TRIALS))
+            plt.savefig(str(lf) + RMSE_prefix + CV_prefix + derivative_prefix+'_'+ML_DATA+"{}hparam_importances_{}_{}.png".format(weigh_prefix,options.dnn,N_TRIALS))
 
             best_parameters = study.best_params
             display(study.trials_dataframe())
@@ -417,6 +417,23 @@ def main():
                 lb, lr, n_layers, n_D = 40, 0.000734, 1, 162
             else:
                 lb, lr, n_layers, n_D = 360, 0.000771, 4, 40
+
+        # Hyper-parameters for look forwards 30min, 90min, 120min, 150min, ... , 300min, respectively
+        lb_lf = [150,40,195,40,75,75,40,40,40]
+        lr_lf = [5.829493395977575e-05, 1.4095949551427182e-05, 2.4374952158965335e-05,
+                 1.311089599011205e-05, 3.732906745895542e-05, 1.529362160868869e-05,
+                 1.5824377523090944e-05, 2.5219948598180393e-05, 1.0933260846326537e-05]
+        n_layers_lf = [7, 7, 19, 0, 1, 12, 9, 9, 5]
+        n_d_lf      = [181, 136, 57, 455, 52, 133, 199, 74, 150]
+        if lf != 12: # note the jump from 30 to 90. Only reassigning if not predicting in 1 hour.
+            lf_index = [1,3,4,5,6,7,8,9,10].index(int(lf)//6)
+            print(lf_index)
+            for lf_i in [6,18,24,30,36,42,48,54,60]:
+                print(lf_i)
+                lfff = [1,3,4,5,6,7,8,9,10].index(int(lf_i)//6)
+                print(lfff)
+                print(lb_lf[lfff], lr_lf[lfff], n_layers_lf[lfff], n_d_lf[lfff])
+            lb, lr, n_layers, n_D = lb_lf[lf_index], lr_lf[lf_index], n_layers_lf[lf_index], n_d_lf[lf_index]
         print("lb: ",lb, "lr: ", lr, "n_D: ", n_D, "n_layers: ", n_layers)
 
     # x_train and y_train will be overwritten in run systematics because of the bootstrapped sets
@@ -559,10 +576,10 @@ def main():
 
           print(ML_DATA+weigh_prefix+str(n_syst)+suffix+'.h5')
           # Saving .h5 files:
-#          if not Dropout:
-#              model.save('BS_models/{}'.format(options.dnn)+ML_DATA+weigh_prefix+'_{}outOf{}_lf{}'.format(i,n_syst,lf)+suffix+'.h5')
-#          else:
-#              model.save('DO_models/{}'.format(options.dnn)+ML_DATA+weigh_prefix+'_{}of{}_lf{}'.format(i,n_syst,lf)+suffix+'.h5')
+          if not Dropout:
+              model.save('BS_models/{}'.format(options.dnn)+ML_DATA+weigh_prefix+'_{}outOf{}_lf{}'.format(i,n_syst,lf)+suffix+'.h5')
+          else:
+              model.save('DO_models/{}'.format(options.dnn)+ML_DATA+weigh_prefix+'_{}of{}_lf{}'.format(i,n_syst,lf)+suffix+'.h5')
 
           # Reseting x_train dataframe if doing feature importance:
           if i<60 and FI:
@@ -717,6 +734,29 @@ def main():
       #r2_storm   = np.array(r2_storm)
     
     if len(mse)>0: # sometimes i turn off the run systematics section and this conditional avoids trouble
+        for st in range(len(keys)):
+#            st_id = 0
+            # Saves the predictions in csv form, for use in colab notebook
+            print("---------------saving .csv's segment---------------")
+            T_s = len(y_predict_storm[0][st])
+            print('steps in storm: ',T_s)
+            print('number of storms total: ',len(keys),keys)
+            predicted_s = np.array([[st,tt,xx,y_predict_storm[xx][st][tt][0],y_test_storm[st][tt][0]] for tt in range(T_s) for xx in range(n_syst)])
+            print(predicted_s)
+            np.savetxt('predictions{}/predict_storm{}{}{}{}_lf{}.csv'.format(suffix,st,suffix,options.dnn,ml_data,lf), predicted_s, delimiter=",")
+            #print(predicted_s)
+            print(predicted_s.shape, T_s)
+#            test_s = np.array([[st,tt,y_test_storm[st][tt][0]] for tt in range(T_s)])
+#            np.savetxt('testValues/test_storm{}{}{}{}_lf{}.csv'.format(st,suffix,options.dnn,ml_data,lf), test_s, delimiter = ',')
+            print("-------------------end segment-----------------------")
+
+#            y_predict_wide = np.array(y_predict_storm)[:,st]
+#            y_predict_means, y_predict_std = y_predict_wide.mean(axis=0), y_predict_wide.std(axis=0)
+#            #Calculating alternative MSE with y_predict_means and upper and mid 1std intervals
+#            rmse_3 = np.sqrt(mean_squared_error(y_predict_means, y_test_storm[st]))*train_stds[0]
+#            rmse_3_max = np.sqrt(mean_squared_error(y_predict_means + y_predict_std, y_test_storm[st]))*train_stds[0] # preliminary
+#            rmse_3_min = np.sqrt(mean_squared_error(y_predict_means - y_predict_std, y_test_storm[st]))*train_stds[0] # preliminary
+
         if False: # trigger post-training feature importance calcs
           # Ultimately, these post-training feature importance computations were not shown, as they did not give significant differences between variables
           print("-------------Feature importance values-------------")
@@ -745,7 +785,7 @@ def main():
             print("rmse of storm {}".format(xx))
             print(np.sqrt(rmse_storm[xx])*train_stds[0])
 
-        if FI:
+        if False:
           ########### Feature Importance graphs #############
           disr = {}
           disr_means = {}
@@ -806,29 +846,6 @@ def main():
                                   columns = columns)
         stormTable_round = stormTable#.round(decimals = 4)
         print(stormTable_round)
-
-        for st in range(len(keys)):
-#            st_id = 0
-            # Saves the predictions in csv form, for use in colab notebook
-            print("---------------saving .csv's segment---------------")
-            T_s = len(y_predict_storm[0][st])
-            print('steps in storm: ',T_s)
-            print('number of storms total: ',len(keys),keys)
-            predicted_s = np.array([[st,tt,xx,y_predict_storm[xx][st][tt][0]] for tt in range(T_s) for xx in range(n_syst)])
-            print(predicted_s)
-            np.savetxt('predictions{}/predict_storm{}{}{}{}_lf{}.csv'.format(st,suffix,options.dnn,ml_data,lf), predicted_s, delimiter=",")
-            #print(predicted_s)
-            print(predicted_s.shape, T_s)
-            test_s = np.array([[st,tt,y_test_storm[st][tt][0]] for tt in range(T_s)])
-            np.savetxt('testValues/test_storm{}{}{}{}_lf{}.csv'.format(st,suffix,options.dnn,ml_data,lf), test_s, delimiter = ',')
-            print("-------------------end segment-----------------------")
-
-            y_predict_wide = np.array(y_predict_storm)[:,st]
-            y_predict_means, y_predict_std = y_predict_wide.mean(axis=0), y_predict_wide.std(axis=0)
-            #Calculating alternative MSE with y_predict_means and upper and mid 1std intervals
-            rmse_3 = np.sqrt(mean_squared_error(y_predict_means, y_test_storm[st]))*train_stds[0]
-            rmse_3_max = np.sqrt(mean_squared_error(y_predict_means + y_predict_std, y_test_storm[st]))*train_stds[0] # preliminary
-            rmse_3_min = np.sqrt(mean_squared_error(y_predict_means - y_predict_std, y_test_storm[st]))*train_stds[0] # preliminary
 
 # ===============================================================
 #  __main__
